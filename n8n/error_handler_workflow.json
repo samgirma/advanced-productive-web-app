@@ -1,0 +1,86 @@
+{
+  "name": "Productive - Global Workflow Error Alert Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e0001111-2222-3333-4444-555566667777",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "error_summary",
+              "value": "=🚨 n8n Workflow Error Alert\nWorkflow Name: {{ $json.workflow.name }}\nWorkflow ID: {{ $json.workflow.id }}\nFailed Node: {{ $json.execution.error.node.name }}\nError Message: {{ $json.execution.error.message }}\nTimestamp: {{ $json.execution.lastNodeExecutedTimestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e0002222-3333-4444-5555-666677778888",
+      "name": "Format Error Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $env.ADMIN_ALERT_EMAIL || 'admin@example.com' }}",
+        "subject": "🚨 [n8n Failure] Productive Workflow Execution Error",
+        "message": "={{ $json.error_summary }}",
+        "options": {}
+      },
+      "id": "e0003333-4444-5555-6666-777788889999",
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail_credential_id",
+          "name": "Productive Alert Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Message": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

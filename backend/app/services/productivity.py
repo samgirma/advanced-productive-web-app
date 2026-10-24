@@ -1,7 +1,19 @@
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from app.models.task import Task
 from app.schemas.analytics import MetricBreakdown
+
+
+def to_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """
+    Safely normalizes any datetime (offset-naive or offset-aware) to UTC.
+    Prevents TypeError: can't compare offset-naive and offset-aware datetimes.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def calculate_metrics_for_tasks(tasks: List[Task]) -> MetricBreakdown:
@@ -10,10 +22,10 @@ def calculate_metrics_for_tasks(tasks: List[Task]) -> MetricBreakdown:
     
     Formula:
     Productivity Score (0-100) =
-        (0.35 * Completion Rate)
-      + (0.35 * On-Time Rate)
+        (0.40 * Completion Rate)
+      + (0.40 * On-Time Rate)
       + (0.20 * Time Efficiency)
-      - (0.10 * Overdue Rate)
+      - (0.15 * Overdue Rate)
     """
     total_tasks = len(tasks)
     if total_tasks == 0:
@@ -36,18 +48,26 @@ def calculate_metrics_for_tasks(tasks: List[Task]) -> MetricBreakdown:
     overdue_count = 0
     total_planned_minutes = 0.0
     total_actual_minutes = 0.0
-    completed_with_duration = 0
+    now_utc = datetime.now(timezone.utc)
 
     for task in tasks:
+        start_time = to_utc(task.planned_start_time)
+        end_time = to_utc(task.planned_end_time)
+        completed_at = to_utc(task.completed_at)
+        started_at = to_utc(task.started_at)
+
         # Planned duration in minutes
-        planned_duration = max(1.0, (task.planned_end_time - task.planned_start_time).total_seconds() / 60.0)
+        if end_time and start_time:
+            planned_duration = max(1.0, (end_time - start_time).total_seconds() / 60.0)
+        else:
+            planned_duration = 60.0
         total_planned_minutes += planned_duration
 
         # Overdue check: marked overdue or completed after planned_end_time
-        is_overdue = task.is_overdue
-        if task.status == "completed" and task.completed_at and task.completed_at > task.planned_end_time:
+        is_overdue = bool(task.is_overdue)
+        if task.status == "completed" and completed_at and end_time and completed_at > end_time:
             is_overdue = True
-        elif task.status != "completed" and task.planned_end_time < datetime.now(task.planned_end_time.tzinfo or timezone.utc):
+        elif task.status != "completed" and end_time and end_time < now_utc:
             is_overdue = True
 
         if is_overdue:
@@ -56,18 +76,16 @@ def calculate_metrics_for_tasks(tasks: List[Task]) -> MetricBreakdown:
         if task.status == "completed":
             completed_tasks += 1
             # Check if completed on or before planned_end_time
-            if task.completed_at and task.completed_at <= task.planned_end_time:
+            if completed_at and end_time and completed_at <= end_time:
                 on_time_tasks += 1
 
             # Actual minutes spent (if started_at and completed_at exist)
-            if task.started_at and task.completed_at and task.completed_at >= task.started_at:
-                actual_duration = max(1.0, (task.completed_at - task.started_at).total_seconds() / 60.0)
+            if started_at and completed_at and completed_at >= started_at:
+                actual_duration = max(1.0, (completed_at - started_at).total_seconds() / 60.0)
                 total_actual_minutes += actual_duration
-                completed_with_duration += 1
             else:
                 # If started_at wasn't manually clicked, assume planned duration as neutral baseline
                 total_actual_minutes += planned_duration
-                completed_with_duration += 1
 
     # 1. Completion Rate (0-100)
     completion_rate = (completed_tasks / total_tasks) * 100.0

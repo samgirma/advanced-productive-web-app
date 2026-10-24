@@ -20,12 +20,14 @@ ENV/
 .coverage
 htmlcov/
 
-# Local Database Files
+# Local Database & Vector Store Files
 *.db
 *.sqlite
 *.sqlite3
 backend/*.db
 backend/*.sqlite3
+backend/chroma_db/
+backend/logs/
 
 # Uploaded Media Files (Keep folder structure via .gitkeep)
 uploads/*

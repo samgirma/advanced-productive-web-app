@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # Webhook Secret (Stage 3)
     N8N_WEBHOOK_SECRET: str = "dev_n8n_secret_token_12345"
+    CHROMA_PERSIST_DIR: str = "./chroma_db"
 
     @property
     def cors_origins_list(self) -> List[str]:

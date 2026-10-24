@@ -8,7 +8,11 @@ import {
   Zap, 
   HelpCircle, 
   Activity, 
-  BarChart3 
+  BarChart3,
+  Sparkles,
+  Loader2,
+  Target,
+  ShieldCheck
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -31,6 +35,24 @@ export default function Analytics() {
     }
     loadData();
   }, [period]);
+
+  // AI Coach Review State (Stage 2)
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachData, setCoachData] = useState(null);
+  const [coachError, setCoachError] = useState('');
+
+  const fetchCoachReview = async () => {
+    setCoachLoading(true);
+    setCoachError('');
+    try {
+      const data = await api.getAICoachReview();
+      setCoachData(data);
+    } catch (err) {
+      setCoachError(err.message || 'Failed to generate weekly AI coach review.');
+    } finally {
+      setCoachLoading(false);
+    }
+  };
 
   const periods = [
     { id: 'daily', label: 'Daily' },
@@ -257,6 +279,96 @@ export default function Analytics() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Weekly AI Performance Coach Review (Stage 2) */}
+      <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)', border: '1px solid rgba(168, 85, 247, 0.35)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Sparkles size={20} style={{ color: '#c084fc' }} />
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f3e8ff', margin: 0 }}>
+                Weekly AI Performance Coach
+              </h3>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+              Gemini executive analysis of your completion rates, on-time punctuality, and execution habits.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={fetchCoachReview}
+            disabled={coachLoading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)', borderColor: '#a855f7' }}
+          >
+            {coachLoading ? <Loader2 size={15} className="spin-animate" /> : <Sparkles size={15} />}
+            {coachLoading ? 'Auditing Performance...' : 'Run Weekly AI Audit'}
+          </button>
+        </div>
+
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#a5b4fc', background: 'rgba(99, 102, 241, 0.12)', padding: '0.2rem 0.6rem', borderRadius: '4px', marginBottom: '1rem' }}>
+          <ShieldCheck size={14} style={{ color: '#38bdf8' }} />
+          <span>Strict Privacy Protection: Analyzes numerical score trends only (private journal text withheld unless opted-in).</span>
+        </div>
+
+        {coachError && (
+          <div style={{ padding: '0.75rem', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '6px', color: '#fda4af', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            {coachError}
+          </div>
+        )}
+
+        {coachData && (
+          <div style={{ marginTop: '0.5rem' }}>
+            {/* Motivational summary */}
+            <div style={{ padding: '0.85rem 1rem', background: 'rgba(30, 41, 59, 0.85)', borderRadius: '8px', borderLeft: '4px solid #c084fc', marginBottom: '1.25rem' }}>
+              <p style={{ color: '#f8fafc', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
+                {coachData.motivational_summary}
+              </p>
+            </div>
+
+            {/* Strengths and Weaknesses */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+              {/* Strengths */}
+              <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#34d399', fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.6rem' }}>
+                  <CheckCircle size={15} /> Demonstrated Strengths
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: '#e2e8f0', lineHeight: '1.6' }}>
+                  {coachData.strengths.map((str, idx) => <li key={idx}>{str}</li>)}
+                </ul>
+              </div>
+
+              {/* Weaknesses / Opportunities */}
+              <div style={{ padding: '1rem', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fbbf24', fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.6rem' }}>
+                  <AlertTriangle size={15} /> Areas for Improvement
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: '#e2e8f0', lineHeight: '1.6' }}>
+                  {coachData.weaknesses.map((w, idx) => <li key={idx}>{w}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            {/* 3 Action Items */}
+            <div style={{ padding: '1rem 1.25rem', background: 'rgba(56, 189, 248, 0.08)', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#38bdf8', fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                <Target size={16} /> 3 High-Impact Actions for Next Week
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {coachData.action_items.map((act, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', fontSize: '0.84rem', color: '#f0f9ff' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: '#38bdf8', color: '#0f172a', fontWeight: 800, fontSize: '0.72rem', flexShrink: 0, marginTop: '1px' }}>
+                      {idx + 1}
+                    </span>
+                    <span>{act}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

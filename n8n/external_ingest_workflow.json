@@ -1,0 +1,95 @@
+{
+  "name": "Productive - External Task & Journal Note Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "productive-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e1234567-89ab-cdef-0123-456789abcdef",
+      "name": "Webhook Trigger (Inbound Task or Note)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "productive-intake"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PRODUCTIVE_API_BASE_URL || 'http://localhost:8000' }}/api/webhooks/external-ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "f2345678-9abc-def0-1234-56789abcdef0",
+      "name": "Forward to Productive API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "a3456789-bcde-f012-3456-789abcdef012",
+      "name": "Respond to Caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger (Inbound Task or Note)": {
+      "main": [
+        [
+          {
+            "node": "Forward to Productive API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward to Productive API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

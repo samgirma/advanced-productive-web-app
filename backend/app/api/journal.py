@@ -74,6 +74,21 @@ def save_journal_entry(
 
     db.commit()
     db.refresh(entry)
+
+    # Auto-index in Chroma vector database for semantic 'Ask My Journal' search
+    try:
+        from app.services.vector_store import index_journal_entry
+        index_journal_entry(
+            user_id=current_user.id,
+            entry_id=entry.id,
+            entry_date=str(entry.entry_date),
+            content=entry.content or "",
+            mood=entry.mood,
+        )
+    except Exception as e:
+        # Vector indexing failure should never prevent database transaction success
+        pass
+
     return entry
 
 

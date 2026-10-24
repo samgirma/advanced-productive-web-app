@@ -16,10 +16,20 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
 export default function Navbar({ activeTab, setActiveTab }) {
-  const { user, logout } = useAuth();
+  const { user, logout, userTimezone } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
+
+  // Live running time count (every second)
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchNotifs = async () => {
     try {
@@ -106,6 +116,54 @@ export default function Navbar({ activeTab, setActiveTab }) {
       </ul>
 
       <div className="nav-actions">
+        {/* Live Running Time Count Clock */}
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            background: 'rgba(99, 102, 241, 0.1)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
+            padding: '0.35rem 0.75rem',
+            borderRadius: '8px',
+            fontSize: '0.82rem',
+            fontFamily: 'monospace',
+            color: '#e0e7ff',
+            fontWeight: 600,
+            letterSpacing: '0.5px'
+          }}
+          title={`Live Clock (${userTimezone}): ${now.toLocaleTimeString('en-US', { timeZone: userTimezone || 'UTC', hour12: true })}`}
+        >
+          <span 
+            style={{ 
+              width: '7px', 
+              height: '7px', 
+              borderRadius: '50%', 
+              background: '#10b981', 
+              boxShadow: '0 0 6px #10b981',
+              display: 'inline-block' 
+            }} 
+          />
+          <Clock size={13} style={{ color: '#818cf8' }} />
+          <span>
+            {now.toLocaleTimeString('en-GB', {
+              timeZone: userTimezone || 'UTC',
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '0.45rem' }}>
+            {now.toLocaleDateString('en-GB', {
+              timeZone: userTimezone || 'UTC',
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short'
+            })}
+          </span>
+        </div>
+
         {/* Notification Bell Dropdown */}
         <div style={{ position: 'relative' }} ref={notifRef}>
           <button

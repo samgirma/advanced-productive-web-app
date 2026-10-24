@@ -1,0 +1,124 @@
+{
+  "name": "Productive - Due Notifications Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "c76f4e12-8812-4c28-9844-0123456789ab",
+      "name": "Schedule Trigger (Every Minute)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PRODUCTIVE_API_BASE_URL || 'http://localhost:8000' }}/api/webhooks/due-notifications",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a98b7c6d-5e4f-3a2b-1c0d-abcdef012345",
+      "name": "Fetch Due Notifications from Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "notifications",
+        "options": {}
+      },
+      "id": "b1234567-89ab-cdef-0123-456789abcdef",
+      "name": "Split Notification Items",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "d456789a-bcde-f012-3456-789abcdef012",
+      "name": "Send Email Notification (Gmail / SMTP)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        860,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail_credential_id",
+          "name": "Productive Notification Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Every Minute)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Due Notifications from Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Due Notifications from Backend": {
+      "main": [
+        [
+          {
+            "node": "Split Notification Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Notification Items": {
+      "main": [
+        [
+          {
+            "node": "Send Email Notification (Gmail / SMTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

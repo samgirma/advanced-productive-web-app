@@ -67,10 +67,17 @@ def register(user_in: UserCreate, response: Response, db: Session = Depends(get_
     )
 
 
+from app.core.rate_limit import check_login_rate_limit
+
 @router.post("/login", response_model=TokenResponse)
-def login(user_in: UserLogin, response: Response, db: Session = Depends(get_db)):
+def login(
+    user_in: UserLogin,
+    response: Response,
+    db: Session = Depends(get_db),
+    _rate_limit: bool = Depends(check_login_rate_limit),
+):
     """
-    Authenticate an existing user.
+    Authenticate an existing user with brute-force rate limit protection.
     Verifies the bcrypt password hash, sets httpOnly cookie, and returns user details.
     """
     user = db.query(User).filter(User.email == user_in.email).first()

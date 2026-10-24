@@ -193,3 +193,48 @@ export function getCurrentDateTimeInTimezone(timeZone = 'UTC', addMinutes = 0) {
   if (hour === '24') hour = '00';
   return `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}`;
 }
+
+/**
+ * Adds minutes to a 'YYYY-MM-DDTHH:mm' local string, properly rolling over
+ * calendar date across midnight.
+ */
+export function addMinutesToDateTimeLocal(dateTimeLocalStr, addMinutes = 0) {
+  if (!dateTimeLocalStr) return '';
+  const [datePart, timePart] = dateTimeLocalStr.split('T');
+  if (!datePart || !timePart) return dateTimeLocalStr;
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+
+  const d = new Date(Date.UTC(year, month - 1, day, hours, minutes + addMinutes, 0));
+  const pad = n => String(n).padStart(2, '0');
+  const y = d.getUTCFullYear();
+  const m = pad(d.getUTCMonth() + 1);
+  const dt = pad(d.getUTCDate());
+  const h = pad(d.getUTCHours());
+  const min = pad(d.getUTCMinutes());
+  return `${y}-${m}-${dt}T${h}:${min}`;
+}
+
+/**
+ * Sets a specific target hour/minute for a deadline, automatically advancing the date
+ * to tomorrow if the target time is earlier than the start time.
+ */
+export function setTargetTimeToDateTimeLocal(dateTimeLocalStr, targetHour, targetMinute = 0) {
+  if (!dateTimeLocalStr) return '';
+  const [datePart, timePart] = dateTimeLocalStr.split('T');
+  if (!datePart || !timePart) return dateTimeLocalStr;
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [startH, startM] = timePart.split(':').map(Number);
+
+  let d = new Date(Date.UTC(year, month - 1, day, targetHour, targetMinute, 0));
+  if (targetHour < startH || (targetHour === startH && targetMinute <= startM)) {
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  const pad = n => String(n).padStart(2, '0');
+  const y = d.getUTCFullYear();
+  const m = pad(d.getUTCMonth() + 1);
+  const dt = pad(d.getUTCDate());
+  const h = pad(d.getUTCHours());
+  const min = pad(d.getUTCMinutes());
+  return `${y}-${m}-${dt}T${h}:${min}`;
+}

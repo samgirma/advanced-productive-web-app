@@ -158,4 +158,29 @@ export const api = {
   // Analytics
   getAnalytics: (period = 'weekly') =>
     apiRequest(`/api/analytics/?period=${period}`),
+
+  // Artificial Intelligence (Stage 2 & 3)
+  parseTasksWithAI: (query, timezone_str) =>
+    apiRequest('/api/ai/parse-tasks', {
+      method: 'POST',
+      body: JSON.stringify({ query, timezone_str }),
+    }),
+
+  confirmTasksWithAI: (tasks) =>
+    apiRequest('/api/ai/confirm-tasks', {
+      method: 'POST',
+      body: JSON.stringify({ tasks }),
+    }),
+
+  getJournalInsights: (entryDate) =>
+    apiRequest(`/api/ai/journal-insights?entry_date=${entryDate}`),
+
+  getAICoachReview: () =>
+    apiRequest('/api/ai/coach-review'),
+
+  askJournal: (query) =>
+    apiRequest('/api/ai/ask-journal', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }),
 };

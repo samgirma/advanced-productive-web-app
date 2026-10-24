@@ -8,7 +8,10 @@ import {
   AlertCircle, 
   Check, 
   Filter, 
-  Calendar 
+  Calendar,
+  Sparkles,
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +22,9 @@ import {
   format24hInterval,
   localDateTimeToUtcIso,
   getCurrentDateTimeInTimezone,
-  convert24to12 
+  convert24to12,
+  addMinutesToDateTimeLocal,
+  setTargetTimeToDateTimeLocal
 } from '../utils/dateUtils';
 
 export default function Dashboard() {
@@ -42,6 +47,56 @@ export default function Dashboard() {
       setEndTime(getCurrentDateTimeInTimezone(userTimezone, 60));
     }
   }, [showAddForm, userTimezone]);
+
+  // AI Quick Schedule State (Stage 2 Gemini Function Calling)
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiCandidates, setAiCandidates] = useState([]);
+  const [aiExplanation, setAiExplanation] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [aiSuccess, setAiSuccess] = useState('');
+
+  const handleAISchedule = async (e) => {
+    e.preventDefault();
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setAiError('');
+    setAiSuccess('');
+    setAiCandidates([]);
+    setAiExplanation('');
+
+    try {
+      const response = await api.parseTasksWithAI(aiPrompt, userTimezone);
+      if (response.candidate_tasks && response.candidate_tasks.length > 0) {
+        setAiCandidates(response.candidate_tasks);
+        setAiExplanation(response.explanation);
+      } else {
+        setAiError('No specific tasks or times could be extracted. Try stating: "Gym tomorrow 6 to 7pm and study 8 to 10"');
+      }
+    } catch (err) {
+      setAiError(err.message || 'Failed to parse scheduling prompt with Gemini.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleConfirmAICandidates = async () => {
+    if (aiCandidates.length === 0) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      await api.confirmTasksWithAI(aiCandidates);
+      setAiSuccess(`Successfully scheduled ${aiCandidates.length} task(s)!`);
+      setAiCandidates([]);
+      setAiPrompt('');
+      setAiExplanation('');
+      fetchTasks();
+    } catch (err) {
+      setAiError(err.message || 'Failed to save confirmed tasks.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -162,6 +217,100 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {/* Gemini AI Natural Language Task Scheduler (Stage 2 Function Calling) */}
+      <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sparkles size={18} style={{ color: '#c084fc' }} />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f3e8ff', margin: 0 }}>
+              AI Quick Schedule (Gemini Function Calling)
+            </h3>
+          </div>
+          <span style={{ fontSize: '0.72rem', color: '#c084fc', background: 'rgba(192, 132, 252, 0.15)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(192, 132, 252, 0.3)' }}>
+            google-genai Tool Use
+          </span>
+        </div>
+
+        <form onSubmit={handleAISchedule} style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            className="form-input"
+            style={{ flex: '1 1 320px', fontSize: '0.9rem' }}
+            placeholder='Type naturally, e.g. "gym tomorrow 6 to 7pm and study 8 to 10"'
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            disabled={aiLoading}
+          />
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={aiLoading || !aiPrompt.trim()}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
+          >
+            {aiLoading ? <Loader2 size={16} className="spin-animate" /> : <Sparkles size={16} />}
+            {aiLoading ? 'Parsing with Gemini...' : 'Extract Tasks'}
+          </button>
+        </form>
+
+        {aiError && (
+          <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '6px', color: '#fda4af', fontSize: '0.82rem' }}>
+            {aiError}
+          </div>
+        )}
+
+        {aiSuccess && (
+          <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px', color: '#6ee7b7', fontSize: '0.82rem' }}>
+            {aiSuccess}
+          </div>
+        )}
+
+        {/* Candidate Tasks Confirmation Modal/Card */}
+        {aiCandidates.length > 0 && (
+          <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(15, 23, 42, 0.7)', borderRadius: '8px', border: '1px solid rgba(192, 132, 252, 0.4)' }}>
+            <div style={{ fontSize: '0.85rem', color: '#e2e8f0', marginBottom: '0.75rem', fontWeight: 600 }}>
+              {aiExplanation}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+              {aiCandidates.map((cand, idx) => (
+                <div key={idx} style={{ padding: '0.75rem', background: 'rgba(30, 41, 59, 0.8)', borderRadius: '6px', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
+                  <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.9rem', marginBottom: '0.35rem' }}>
+                    {cand.title}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Start: <strong style={{ color: '#38bdf8' }}>{format24hDate(cand.planned_start_time, userTimezone)} {format24hTime(cand.planned_start_time, userTimezone)}</strong> ({format12hTime(cand.planned_start_time, userTimezone)})
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    End: <strong style={{ color: '#a5b4fc' }}>{format24hDate(cand.planned_end_time, userTimezone)} {format24hTime(cand.planned_end_time, userTimezone)}</strong> ({format12hTime(cand.planned_end_time, userTimezone)})
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setAiCandidates([])}
+                disabled={aiLoading}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleConfirmAICandidates}
+                disabled={aiLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderColor: '#10b981' }}
+              >
+                {aiLoading ? <Loader2 size={14} className="spin-animate" /> : <Check size={14} />}
+                Confirm & Add {aiCandidates.length} Task(s)
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Task Creation Modal / Dropdown */}
       {showAddForm && (
         <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem', border: '1px solid rgba(99, 102, 241, 0.4)' }}>
@@ -239,11 +388,7 @@ export default function Dashboard() {
                 style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
                 onClick={() => {
                   if (startTime) {
-                    const [d, t] = startTime.split('T');
-                    const [h, m] = t.split(':').map(Number);
-                    const endDt = new Date(Date.UTC(2000, 0, 1, h, m + 30));
-                    const pad = n => String(n).padStart(2, '0');
-                    setEndTime(`${d}T${pad(endDt.getUTCHours())}:${pad(endDt.getUTCMinutes())}`);
+                    setEndTime(addMinutesToDateTimeLocal(startTime, 30));
                   }
                 }}
               >
@@ -255,11 +400,7 @@ export default function Dashboard() {
                 style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
                 onClick={() => {
                   if (startTime) {
-                    const [d, t] = startTime.split('T');
-                    const [h, m] = t.split(':').map(Number);
-                    const endDt = new Date(Date.UTC(2000, 0, 1, h + 1, m));
-                    const pad = n => String(n).padStart(2, '0');
-                    setEndTime(`${d}T${pad(endDt.getUTCHours())}:${pad(endDt.getUTCMinutes())}`);
+                    setEndTime(addMinutesToDateTimeLocal(startTime, 60));
                   }
                 }}
               >
@@ -271,8 +412,19 @@ export default function Dashboard() {
                 style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
                 onClick={() => {
                   if (startTime) {
-                    const [d] = startTime.split('T');
-                    setEndTime(`${d}T15:00`);
+                    setEndTime(addMinutesToDateTimeLocal(startTime, 120));
+                  }
+                }}
+              >
+                +2 hours
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
+                onClick={() => {
+                  if (startTime) {
+                    setEndTime(setTargetTimeToDateTimeLocal(startTime, 15, 0));
                   }
                 }}
               >
@@ -284,8 +436,7 @@ export default function Dashboard() {
                 style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
                 onClick={() => {
                   if (startTime) {
-                    const [d] = startTime.split('T');
-                    setEndTime(`${d}T17:00`);
+                    setEndTime(setTargetTimeToDateTimeLocal(startTime, 17, 0));
                   }
                 }}
               >
@@ -297,8 +448,7 @@ export default function Dashboard() {
                 style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem' }}
                 onClick={() => {
                   if (startTime) {
-                    const [d] = startTime.split('T');
-                    setEndTime(`${d}T21:00`);
+                    setEndTime(setTargetTimeToDateTimeLocal(startTime, 21, 0));
                   }
                 }}
               >
