@@ -1,0 +1,47 @@
+# Environment Variables & Secrets (NEVER commit to version control!)
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+
+# Python compilation and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/venv/
+backend/.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Database Files
+*.db
+*.sqlite
+*.sqlite3
+backend/*.db
+backend/*.sqlite3
+
+# Uploaded Media Files (Keep folder structure via .gitkeep)
+uploads/*
+backend/uploads/*
+!**/uploads/.gitkeep
+
+# Node.js / React Frontend Build & Dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Operating System & IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
