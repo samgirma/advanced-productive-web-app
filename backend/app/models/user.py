@@ -24,3 +24,9 @@ class User(Base):
     memories = relationship("Memory", back_populates="owner", cascade="all, delete-orphan")
     settings = relationship("Setting", back_populates="owner", uselist=False, cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="owner", cascade="all, delete-orphan")
+
+    @property
+    def timezone(self) -> str:
+        if self.settings and self.settings.timezone:
+            return self.settings.timezone
+        return "UTC"

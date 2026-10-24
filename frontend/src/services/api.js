@@ -150,6 +150,11 @@ export const api = {
       method: 'POST',
     }),
 
+  triggerTestAlert: (alertType) =>
+    apiRequest(`/api/notifications/test-alert?alert_type=${alertType}`, {
+      method: 'POST',
+    }),
+
   // Analytics
   getAnalytics: (period = 'weekly') =>
     apiRequest(`/api/analytics/?period=${period}`),

@@ -19,6 +19,13 @@ def get_notifications(
     """
     Retrieve user notifications ordered by unread status and timestamp.
     """
+    from app.services.reminder_service import check_and_process_daily_reminders, check_and_process_overdue_tasks
+    try:
+        check_and_process_overdue_tasks(db)
+        check_and_process_daily_reminders(db)
+    except Exception:
+        pass
+
     return db.query(Notification).filter(
         Notification.user_id == current_user.id
     ).order_by(
@@ -65,3 +72,35 @@ def mark_all_read(
 
     db.commit()
     return {"message": "All notifications marked as read."}
+
+
+@router.post("/test-alert", response_model=NotificationResponse)
+def trigger_test_alert(
+    alert_type: str = "reminder_plan",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Triggers an immediate test alert for testing Planning, Journal, or Overdue notifications.
+    """
+    if alert_type == "reminder_plan":
+        title = "Plan Your Day"
+        message = "Good morning! Please plan your day and schedule your daily tasks."
+    elif alert_type == "reminder_journal":
+        title = "Journal Your Day"
+        message = "How was your day? Take a quiet moment to write your journal reflection."
+    else:
+        title = "Task Overdue Alert"
+        message = "Attention: You have a task past its scheduled 24-hour deadline."
+
+    notif = Notification(
+        user_id=current_user.id,
+        title=title,
+        message=message,
+        notification_type=alert_type,
+        is_read=False
+    )
+    db.add(notif)
+    db.commit()
+    db.refresh(notif)
+    return notif

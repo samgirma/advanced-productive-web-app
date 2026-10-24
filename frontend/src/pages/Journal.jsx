@@ -79,7 +79,7 @@ export default function Journal() {
       try {
         await api.saveJournal(currentDate, newContent, newMood);
         setSaveStatus('saved');
-        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
         if (newContent.trim() && !loggedDates.includes(currentDate)) {
           setLoggedDates(prev => [...prev, currentDate]);
         }

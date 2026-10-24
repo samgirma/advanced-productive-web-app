@@ -20,31 +20,34 @@ def get_user_tasks(
     db: Session = Depends(get_db)
 ):
     """
-    Retrieve all tasks belonging to the authenticated user.
-    Auto-evaluates overdue status on fetch so client is always up to date.
+    Retrieve tasks belonging to the authenticated user.
+    Auto-evaluates overdue status first. Overdue active tasks ONLY appear
+    under 'overdue' and are excluded from 'not_started' and 'started'.
     """
-    query = db.query(Task).filter(Task.user_id == current_user.id)
-    if status_filter:
-        query = query.filter(Task.status == status_filter)
-
-    tasks = query.order_by(Task.planned_start_time.asc()).all()
-
-    # Check for freshly overdue tasks
     now_utc = datetime.now(timezone.utc)
+    all_user_tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
     updated = False
-    for task in tasks:
+
+    for task in all_user_tasks:
         task_end = task.planned_end_time
         if task_end.tzinfo is None:
             task_end = task_end.replace(tzinfo=timezone.utc)
+        else:
+            task_end = task_end.astimezone(timezone.utc)
 
         if task.status != "completed" and not task.is_overdue and task_end < now_utc:
             task.is_overdue = True
             updated = True
-            # Create in-app notification
+            from app.services.reminder_service import get_user_timezone
+            user_tz = get_user_timezone(db, current_user.id)
+            local_end_time = task_end.astimezone(user_tz)
+            time_24h = local_end_time.strftime("%H:%M")
+
+            # Create in-app notification in pure 24-hour format
             db.add(Notification(
                 user_id=current_user.id,
                 title="Task Overdue!",
-                message=f"Task '{task.title}' passed its scheduled end time ({task.planned_end_time.strftime('%H:%M')}).",
+                message=f"Task '{task.title}' passed its scheduled deadline at {time_24h} (24h) and is now overdue.",
                 notification_type="overdue_task",
                 is_read=False
             ))
@@ -52,7 +55,17 @@ def get_user_tasks(
     if updated:
         db.commit()
 
-    return tasks
+    query = db.query(Task).filter(Task.user_id == current_user.id)
+    if status_filter == "overdue":
+        query = query.filter(Task.is_overdue.is_(True), Task.status != "completed")
+    elif status_filter == "not_started":
+        query = query.filter(Task.status == "not_started", Task.is_overdue.is_(False))
+    elif status_filter == "started":
+        query = query.filter(Task.status == "started", Task.is_overdue.is_(False))
+    elif status_filter == "completed":
+        query = query.filter(Task.status == "completed")
+
+    return query.order_by(Task.planned_start_time.asc()).all()
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)

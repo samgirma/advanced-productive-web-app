@@ -42,8 +42,14 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateUserTimezone = (newTz) => {
+    setUser(prev => prev ? { ...prev, timezone: newTz } : null);
+  };
+
+  const userTimezone = user?.timezone || 'UTC';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, userTimezone, updateUserTimezone }}>
       {children}
     </AuthContext.Provider>
   );

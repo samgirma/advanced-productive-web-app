@@ -180,7 +180,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
                     </div>
                     <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{n.message}</p>
                     <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
-                      {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
                     </span>
                   </div>
                 ))

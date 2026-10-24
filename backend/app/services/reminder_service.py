@@ -47,12 +47,12 @@ def check_and_process_overdue_tasks(db: Session, current_utc: Optional[datetime]
             # Format the alert using the user's local timezone
             user_tz = get_user_timezone(db, task.user_id)
             local_end_time = task_end.astimezone(user_tz)
-            time_display = local_end_time.strftime("%H:%M")
+            time_24h = local_end_time.strftime("%H:%M")
 
             notification = Notification(
                 user_id=task.user_id,
                 title="Task Overdue Alert",
-                message=f"Task '{task.title}' was scheduled to end at {time_display} and is now overdue.",
+                message=f"Task '{task.title}' was scheduled to end at {time_24h} (24h) and is now overdue.",
                 notification_type="overdue_task",
                 is_read=False
             )
@@ -89,38 +89,41 @@ def check_and_process_daily_reminders(db: Session, current_utc: Optional[datetim
         # Beginning of user's local day in UTC
         start_of_local_day_local = datetime.combine(local_date, datetime.min.time(), tzinfo=user_tz)
         start_of_local_day_utc = start_of_local_day_local.astimezone(timezone.utc)
+        start_of_local_day_utc_naive = start_of_local_day_utc.replace(tzinfo=None)
 
-        # 1. "Plan your day" reminder
-        if setting.plan_reminder_time == local_time_str:
+        # 1. "Plan Your Day" reminder
+        if local_time_str >= setting.plan_reminder_time:
             existing = db.query(Notification).filter(
                 Notification.user_id == user_id,
                 Notification.notification_type == "reminder_plan",
-                Notification.created_at >= start_of_local_day_utc
+                Notification.created_at >= start_of_local_day_utc_naive,
+                Notification.message.contains(f"({setting.plan_reminder_time} 24h")
             ).first()
 
             if not existing:
                 db.add(Notification(
                     user_id=user_id,
                     title="Plan Your Day",
-                    message="Good morning! Please take a moment to plan your tasks for today.",
+                    message=f"Scheduled reminder ({setting.plan_reminder_time} 24h): Please take a moment to plan your tasks for today.",
                     notification_type="reminder_plan",
                     is_read=False
                 ))
                 logger.info(f"Triggered 'plan your day' reminder for user {user_id} at {local_time_str} ({tz_str})")
 
-        # 2. "Journal your day" reminder
-        if setting.journal_reminder_time == local_time_str:
+        # 2. "Journal Your Day" reminder
+        if local_time_str >= setting.journal_reminder_time:
             existing = db.query(Notification).filter(
                 Notification.user_id == user_id,
                 Notification.notification_type == "reminder_journal",
-                Notification.created_at >= start_of_local_day_utc
+                Notification.created_at >= start_of_local_day_utc_naive,
+                Notification.message.contains(f"({setting.journal_reminder_time} 24h")
             ).first()
 
             if not existing:
                 db.add(Notification(
                     user_id=user_id,
                     title="Journal Your Day",
-                    message="How was your day? Take a quiet moment to write your journal reflection.",
+                    message=f"Scheduled reminder ({setting.journal_reminder_time} 24h): How was your day? Take a quiet moment to write your journal reflection.",
                     notification_type="reminder_journal",
                     is_read=False
                 ))

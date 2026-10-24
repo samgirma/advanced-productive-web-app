@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
 
     id: int
     email: EmailStr
+    timezone: str = "UTC"
     created_at: datetime
 
 

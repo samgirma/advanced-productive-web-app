@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 
 
 class TaskCreate(BaseModel):
@@ -29,3 +29,11 @@ class TaskResponse(BaseModel):
     completed_at: Optional[datetime] = None
     is_overdue: bool
     created_at: datetime
+
+    @field_serializer("planned_start_time", "planned_end_time", "started_at", "completed_at", "created_at")
+    def serialize_utc_datetime(self, dt: Optional[datetime], _info):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
