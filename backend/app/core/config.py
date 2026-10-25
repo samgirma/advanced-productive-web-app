@@ -64,4 +64,8 @@ if settings.VERCEL:
 if settings.DATABASE_URL.startswith("/"):
     # Convert bare path to sqlite URL format
     settings.DATABASE_URL = f"sqlite:///{settings.DATABASE_URL}"
+elif settings.DATABASE_URL.startswith("postgres://"):
+    # Fix legacy Heroku/Render dialect scheme
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 
