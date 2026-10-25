@@ -10,7 +10,7 @@ import {
   FileCheck, 
   Plus 
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getMediaUrl } from '../services/api';
 
 export default function Memories() {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -188,7 +188,7 @@ export default function Memories() {
                     onClick={() => setActiveMemory(mem)}
                   >
                     {mem.file_type === 'image' ? (
-                      <img src={mem.file_path} alt={mem.caption || mem.file_name} className="memory-thumb" />
+                      <img src={getMediaUrl(mem.file_path)} alt={mem.caption || mem.file_name} className="memory-thumb" />
                     ) : (
                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e293b' }}>
                         <Film size={40} color="#38bdf8" />
@@ -235,13 +235,13 @@ export default function Memories() {
             <div style={{ display: 'flex', justifyContent: 'center', background: '#000', borderRadius: 'var(--radius-md)', overflow: 'hidden', maxHeight: '60vh', marginBottom: '1.25rem' }}>
               {activeMemory.file_type === 'image' ? (
                 <img 
-                  src={activeMemory.file_path} 
+                  src={getMediaUrl(activeMemory.file_path)} 
                   alt={activeMemory.caption || 'Memory'} 
                   style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} 
                 />
               ) : (
                 <video 
-                  src={activeMemory.file_path} 
+                  src={getMediaUrl(activeMemory.file_path)} 
                   controls 
                   autoPlay 
                   style={{ maxWidth: '100%', maxHeight: '60vh' }} 

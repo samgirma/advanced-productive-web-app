@@ -1,7 +1,38 @@
 /**
  * Centralized API service for Productive
- * Uses credentials: 'include' so that HttpOnly session cookies are transmitted automatically.
+ * Supports both independent Vercel deployments (via VITE_API_URL + Bearer Token)
+ * and local unified development (via HttpOnly session cookies).
  */
+
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+const TOKEN_STORAGE_KEY = 'productive_auth_token';
+
+export function getStoredToken() {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setStoredToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+  } catch (e) {}
+}
+
+export function getMediaUrl(filePath) {
+  if (!filePath) return '';
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return filePath;
+  }
+  return `${API_BASE_URL}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
+}
 
 async function apiRequest(endpoint, options = {}) {
   const defaultHeaders = {
@@ -12,16 +43,22 @@ async function apiRequest(endpoint, options = {}) {
     defaultHeaders['Content-Type'] = 'application/json';
   }
 
+  const token = getStoredToken();
+  if (token) {
+    defaultHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   const config = {
     ...options,
-    credentials: 'include', // transmits HttpOnly cookie
+    credentials: 'include', // transmits HttpOnly cookies when supported
     headers: {
       ...defaultHeaders,
       ...options.headers,
     },
   };
 
-  const response = await fetch(endpoint, config);
+  const targetUrl = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const response = await fetch(targetUrl, config);
 
   if (response.status === 204) {
     return null;
@@ -39,22 +76,37 @@ async function apiRequest(endpoint, options = {}) {
 
 export const api = {
   // Authentication
-  register: (email, password) =>
-    apiRequest('/api/auth/register', {
+  register: async (email, password) => {
+    const data = await apiRequest('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-    }),
+    });
+    if (data && data.access_token) {
+      setStoredToken(data.access_token);
+    }
+    return data;
+  },
 
-  login: (email, password) =>
-    apiRequest('/api/auth/login', {
+  login: async (email, password) => {
+    const data = await apiRequest('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
-    }),
+    });
+    if (data && data.access_token) {
+      setStoredToken(data.access_token);
+    }
+    return data;
+  },
 
-  logout: () =>
-    apiRequest('/api/auth/logout', {
-      method: 'POST',
-    }),
+  logout: async () => {
+    try {
+      await apiRequest('/api/auth/logout', {
+        method: 'POST',
+      });
+    } finally {
+      setStoredToken(null);
+    }
+  },
 
   getMe: () => apiRequest('/api/auth/me'),
 

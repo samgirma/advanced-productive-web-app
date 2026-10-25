@@ -46,16 +46,23 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables verified and ready.")
 
-    # 4. Start background scheduler for reminders & overdue alerts
-    setup_scheduler()
-    scheduler.start()
-    logger.info("APScheduler background tasks running.")
+    # 4. Start background scheduler for reminders & overdue alerts (only if not on serverless Vercel)
+    if not settings.VERCEL:
+        try:
+            setup_scheduler()
+            scheduler.start()
+            logger.info("APScheduler background tasks running.")
+        except Exception as e:
+            logger.warning(f"Could not start APScheduler: {e}")
+    else:
+        logger.info("Running on Vercel serverless environment; skipping background scheduler thread.")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down background scheduler...")
-    scheduler.shutdown()
+    if not settings.VERCEL and scheduler.running:
+        logger.info("Shutting down background scheduler...")
+        scheduler.shutdown()
     logger.info("Productive application shutdown complete.")
 
 
@@ -104,10 +111,18 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Configure Cross-Origin Resource Sharing (CORS)
-# allow_credentials=True is required for HttpOnly cookies across ports
+cors_origins = settings.cors_origins_list
+cors_origin_regex = None
+# If CORS_ORIGINS includes vercel wildcard or localhost, allow vercel preview deployments
+if any(".vercel.app" in o for o in cors_origins) or "*" in cors_origins:
+    cors_origin_regex = r"^https://.*\.vercel\.app$"
+    if "*" in cors_origins:
+        cors_origins = [o for o in cors_origins if o != "*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=cors_origins if cors_origins else ["*"],
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

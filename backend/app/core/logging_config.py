@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import sys
 from contextvars import ContextVar
@@ -46,12 +47,8 @@ def setup_logging():
     """
     Configures structured, redacting, rotating logging for Productive:
     1. Console output (stdout) with request ID.
-    2. Rotating file handler (productive.log, 5MB, 5 backups).
+    2. Rotating file handler (productive.log) when on persistent writable disks.
     """
-    log_dir = Path("./logs")
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "productive.log"
-
     formatter = RedactingFormatter(
         "%(asctime)s [%(levelname)s] [req:%(request_id)s] %(name)s: %(message)s"
     )
@@ -59,21 +56,28 @@ def setup_logging():
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=5 * 1024 * 1024,  # 5 MB per file
-        backupCount=5,
-        encoding="utf-8",
-    )
-    file_handler.setFormatter(formatter)
-
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
-
-    # Avoid duplicate handlers on reload
     root_logger.handlers.clear()
     root_logger.addHandler(console_handler)
-    root_logger.addHandler(file_handler)
+
+    # Attach file handler only if not in serverless / read-only Vercel environment
+    is_vercel = os.getenv("VERCEL") == "1"
+    if not is_vercel:
+        try:
+            log_dir = Path("./logs")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "productive.log"
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=5 * 1024 * 1024,  # 5 MB per file
+                backupCount=5,
+                encoding="utf-8",
+            )
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+        except Exception:
+            pass  # Fall back strictly to console logging if disk is unwritable
 
     # Clean up third-party noise
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

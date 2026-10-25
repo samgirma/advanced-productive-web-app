@@ -18,10 +18,11 @@ def _set_auth_cookie(response: Response, token: str):
         key="access_token",
         value=token,
         httponly=True,   # Inaccessible to JS - protects against XSS token theft
-        secure=False,    # Set to True when deploying to HTTPS in production
-        samesite="lax",  # Protects against Cross-Site Request Forgery (CSRF)
+        secure=settings.COOKIE_SECURE,    # True on HTTPS / Vercel
+        samesite=settings.COOKIE_SAMESITE,  # 'none' on cross-origin Vercel deployments, 'lax' locally
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
